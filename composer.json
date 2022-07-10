@@ -1,0 +1,8 @@
+{
+    "name": "lazyperson0710/pvpworld",
+    "description": "PVPWorld",
+    "minimum-stability": "stable",
+    "require": {
+        "pocketmine/pocketmine-mp": "4.*"
+    }
+}

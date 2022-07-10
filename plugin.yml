@@ -1,0 +1,14 @@
+name: ReplenishResources-PM4
+main: aieuo\replenish\ReplenishResources
+version: 3.0.0
+api: 4.0.0
+load: POSTWORLD
+author: aieuo
+commands:
+  reso:
+    description: 人工資源補充
+    usage: /reso <pos1 | pos2 | add | del | change | auto | setting>
+    permission: "aieuo.ReplenishResources.use"
+permissions:
+  aieuo.ReplenishResources.use:
+    default: op
