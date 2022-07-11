@@ -2,6 +2,7 @@
 
 namespace aieuo\replenish;
 
+use pocketmine\block\BlockFactory;
 use pocketmine\command\Command;
 use pocketmine\command\CommandSender;
 use pocketmine\event\block\BlockBreakEvent;
@@ -13,13 +14,13 @@ use pocketmine\plugin\PluginBase;
 use pocketmine\scheduler\TaskHandler;
 use pocketmine\Server;
 use pocketmine\utils\Config;
-use pocketmine\world\Position;
 
 class ReplenishResources extends PluginBase implements Listener {
 
     private ?TaskHandler $taskHandler = null;
     private Config $setting;
     private ReplenishResourcesAPI $api;
+    private static ReplenishResources $instance;
 
     /** @var string[] */
     private array $break;
@@ -30,6 +31,8 @@ class ReplenishResources extends PluginBase implements Listener {
 
     /** @var float[][] */
     private array $time;
+
+    public const Prefix = "§a[資源補充]§f";
 
     public function onEnable(): void {
         $this->getServer()->getPluginManager()->registerEvents($this, $this);
@@ -104,7 +107,7 @@ class ReplenishResources extends PluginBase implements Listener {
     public function onCommand(CommandSender $sender, Command $command, string $label, array $args): bool {
         if (!$command->testPermission($sender)) return false;
         if (!isset($args[0])) {
-            $sender->sendMessage("Usage: /reso <pos1 | pos2 | add | del | change | cancel | auto | setting>");
+            $sender->sendMessage(ReplenishResources::Prefix . "Usage: /reso <pos1 | pos2 | add | del | change | cancel | auto | setting>");
             return true;
         }
         $name = $sender->getName();
@@ -112,125 +115,125 @@ class ReplenishResources extends PluginBase implements Listener {
             case 'pos1':
             case 'pos2':
                 if (!($sender instanceof Player)) {
-                    $sender->sendMessage("コンソールからは使用できません");
+                    $sender->sendMessage(ReplenishResources::Prefix . "コンソールからは使用できません");
                     return true;
                 }
                 $this->break[$name] = $args[0];
-                $sender->sendMessage("ブロックを壊してください");
+                $sender->sendMessage(ReplenishResources::Prefix . "ブロックを壊してください");
                 break;
             case 'add':
                 if (!($sender instanceof Player)) {
-                    $sender->sendMessage("コンソールからは使用できません");
+                    $sender->sendMessage(ReplenishResources::Prefix . "コンソールからは使用できません");
                     return true;
                 }
                 if (!isset($args[1])) {
-                    $sender->sendMessage("Usage: /reso add <id>");
+                    $sender->sendMessage(ReplenishResources::Prefix . "Usage: /reso add <id>");
                     return true;
                 }
                 if (!isset($this->pos1[$name]) or !isset($this->pos2[$name])) {
-                    $sender->sendMessage("まず/reso pos1と/reso pos2で範囲を設定してください");
+                    $sender->sendMessage(ReplenishResources::Prefix . "まず/reso pos1と/reso pos2で範囲を設定してください");
                     return true;
                 }
                 if ($this->pos1[$name]->getWorld()->getFolderName() !== $this->pos2[$name]->getWorld()->getFolderName()) {
-                    $sender->sendMessage("pos1とpos2は同じワールドに設定してください");
+                    $sender->sendMessage(ReplenishResources::Prefix . "pos1とpos2は同じワールドに設定してください");
                     return true;
                 }
                 $this->tap[$name] = ["type" => "add", "id" => $args[1]];
-                $sender->sendMessage("追加する看板をタップしてください");
+                $sender->sendMessage(ReplenishResources::Prefix . "追加する看板をタップしてください");
                 break;
             case 'del':
                 if (!($sender instanceof Player)) {
-                    $sender->sendMessage("コンソールからは使用できません");
+                    $sender->sendMessage(ReplenishResources::Prefix . "コンソールからは使用できません");
                     return true;
                 }
                 $this->tap[$name] = ["type" => "del"];
-                $sender->sendMessage("削除する看板をタップしてください");
+                $sender->sendMessage(ReplenishResources::Prefix . "削除する看板をタップしてください");
                 break;
             case "change":
                 if (!($sender instanceof Player)) {
-                    $sender->sendMessage("コンソールからは使用できません");
+                    $sender->sendMessage(ReplenishResources::Prefix . "コンソールからは使用できません");
                     return true;
                 }
                 if (!isset($args[1])) {
-                    $sender->sendMessage("Usage: /reso change <id>");
+                    $sender->sendMessage(ReplenishResources::Prefix . "Usage: /reso change <id>");
                     return true;
                 }
                 $this->tap[$name] = ["type" => "change", "id" => $args[1]];
-                $sender->sendMessage("変更する看板をタップしてください");
+                $sender->sendMessage(ReplenishResources::Prefix . "変更する看板をタップしてください");
                 break;
             case 'cancel':
                 if (!($sender instanceof Player)) {
-                    $sender->sendMessage("コンソールからは使用できません");
+                    $sender->sendMessage(ReplenishResources::Prefix . "コンソールからは使用できません");
                     return true;
                 }
                 unset($this->pos1[$name], $this->pos2[$name], $this->tap[$name], $this->break[$name]);
-                $sender->sendMessage("キャンセルしました");
+                $sender->sendMessage(ReplenishResources::Prefix . "キャンセルしました");
                 break;
             case 'auto':
                 if (!($sender instanceof Player)) {
-                    $sender->sendMessage("コンソールからは使用できません");
+                    $sender->sendMessage(ReplenishResources::Prefix . "コンソールからは使用できません");
                     return true;
                 }
                 if (!isset($args[1])) {
-                    $sender->sendMessage("Usage: /reso auto <add | del>");
+                    $sender->sendMessage(ReplenishResources::Prefix . "Usage: /reso auto <add | del>");
                     return true;
                 }
                 switch ($args[1]) {
                     case 'add':
                         $this->tap[$name] = ["type" => "auto_add"];
-                        $sender->sendMessage("追加する看板をタップしてください");
+                        $sender->sendMessage(ReplenishResources::Prefix . "追加する看板をタップしてください");
                         break;
                     case 'del':
                         $this->tap[$name] = ["type" => "auto_del"];
-                        $sender->sendMessage("削除する看板をタップしてください");
+                        $sender->sendMessage(ReplenishResources::Prefix . "削除する看板をタップしてください");
                         break;
                     default:
-                        $sender->sendMessage("Usage: /reso auto <add | del>");
+                        $sender->sendMessage(ReplenishResources::Prefix . "Usage: /reso auto <add | del>");
                         break;
                 }
                 break;
             case 'setting':
                 if (empty($args[1])) {
-                    $sender->sendMessage("サブコマンドを入力してください[Usage: /reso setting <sneak | announce | checkplayer | reload>]");
+                    $sender->sendMessage(ReplenishResources::Prefix . "サブコマンドを入力してください[Usage: /reso setting <sneak | announce | checkplayer | reload>]");
                     break;
                 }
                 switch ($args[1]) {
                     case "sneak":
                         $sneak = $this->getSetting()->get("sneak");
                         if (!isset($args[2])) {
-                            $sender->sendMessage($sneak ? "スニークしないと反応しません" : "スニークしなくても反応します");
+                            $sender->sendMessage(ReplenishResources::Prefix . $sneak ? "スニークしないと反応しません" : "スニークしなくても反応します");
                             break;
                         }
                         if ($args[2] !== "on" and $args[2] !== "off") {
-                            $sender->sendMessage("Usage: /reso setting sneak <on | off>");
+                            $sender->sendMessage(ReplenishResources::Prefix . "Usage: /reso setting sneak <on | off>");
                             break;
                         }
                         $this->getSetting()->set("sneak", $args[2] === "on");
                         $this->getSetting()->save();
-                        $sender->sendMessage(($args[2] === "on" ? "スニークしないと反応しない" : "スニークしなくても反応する") . "ようにしました");
+                        $sender->sendMessage(ReplenishResources::Prefix . ($args[2] === "on" ? "スニークしないと反応しない" : "スニークしなくても反応する") . "ようにしました");
                         break;
                     case "announce":
                         $announce = $this->getSetting()->get("announce");
                         if (!isset($args[2])) {
-                            $sender->sendMessage($announce ? "補充時に全員に知らせます" : "補充時に全員に知らせません");
+                            $sender->sendMessage(ReplenishResources::Prefix . $announce ? "補充時に全員に知らせます" : "補充時に全員に知らせません");
                             break;
                         }
                         if ($args[2] !== "on" and $args[2] !== "off") {
-                            $sender->sendMessage("Usage: /reso setting announce <on | off>");
+                            $sender->sendMessage(ReplenishResources::Prefix . "Usage: /reso setting announce <on | off>");
                             break;
                         }
                         $this->getSetting()->set("announce", $args[2] === "on");
                         $this->getSetting()->save();
-                        $sender->sendMessage(($args[2] === "on" ? "補充時に全員に知る" : "補充時に全員に知らせない") . "ようにしました");
+                        $sender->sendMessage(ReplenishResources::Prefix . ($args[2] === "on" ? "補充時に全員に知る" : "補充時に全員に知らせない") . "ようにしました");
                         break;
                     case "checkplayer":
                         $check = $this->getSetting()->get("check-inside");
                         if (!isset($args[2])) {
-                            $sender->sendMessage($check ? "資源内にプレイヤーがいても補充します" : "資源内にプレイヤーがいると補充しません");
+                            $sender->sendMessage(ReplenishResources::Prefix . $check ? "資源内にプレイヤーがいても補充します" : "資源内にプレイヤーがいると補充しません");
                             break;
                         }
                         if ($args[2] !== "on" and $args[2] !== "off") {
-                            $sender->sendMessage("Usage: /reso setting checkplayer <on | off>");
+                            $sender->sendMessage(ReplenishResources::Prefix . "Usage: /reso setting checkplayer <on | off>");
                             break;
                         }
                         $this->getSetting()->set("check-inside", $args[2] === "on");
@@ -238,16 +241,16 @@ class ReplenishResources extends PluginBase implements Listener {
                         $sender->sendMessage(($args[2] === "on" ? "資源内にプレイヤーがいても補充する" : "資源内にプレイヤーがいると補充しない") . "ようにしました");
                         break;
                     case "reload":
-                        $sender->sendMessage("設定ファイルを再読み込みしました");
+                        $sender->sendMessage(ReplenishResources::Prefix . "設定ファイルを再読み込みしました");
                         $this->getSetting()->reload();
                         break;
                     default:
-                        $sender->sendMessage("Usage: /reso setting <sneak | announce | checkplayer | reload>");
+                        $sender->sendMessage(ReplenishResources::Prefix . "Usage: /reso setting <sneak | announce | checkplayer | reload>");
                         break;
                 }
                 break;
             default:
-                $sender->sendMessage("Usage: /reso <pos1 | pos2 | add | del | change | cancel | auto | setting>");
+                $sender->sendMessage(ReplenishResources::Prefix . "Usage: /reso <pos1 | pos2 | add | del | change | cancel | auto | setting>");
                 break;
         }
         return true;
@@ -265,7 +268,7 @@ class ReplenishResources extends PluginBase implements Listener {
                 case 'pos1':
                 case 'pos2':
                     $this->{$type}[$name] = $block->getPosition();
-                    $player->sendMessage($type . "を設定しました (" . $pos->x . "," . $pos->y . "," . $pos->z . "," . $pos->world->getFolderName() . ")");
+                    $player->sendMessage(ReplenishResources::Prefix . $type . "を設定しました (" . $pos->x . "," . $pos->y . "," . $pos->z . "," . $pos->world->getFolderName() . ")");
                     break;
             }
             unset($this->break[$name]);
@@ -273,11 +276,11 @@ class ReplenishResources extends PluginBase implements Listener {
         }
         if ((($block->getId() === 63 or $block->getId() === 68) and !$event->isCancelled()) and $this->api->existsResource($block->getPosition())) {
             if (!Server::getInstance()->isOp($player->getName())) {
-                $player->sendMessage("§cこの看板は壊せません");
+                $player->sendMessage(ReplenishResources::Prefix . "§cこの看板は壊せません");
                 $event->cancel();
                 return;
             }
-            $player->sendMessage("補充看板を壊しました");
+            $player->sendMessage(ReplenishResources::Prefix . "補充看板を壊しました");
             $this->api->removeResource($block->getPosition());
         }
     }
@@ -296,11 +299,11 @@ class ReplenishResources extends PluginBase implements Listener {
                         return ["id" => $ids2[0], "damage" => $ids2[1] ?? 0, "per" => $ids2[2] ?? 100];
                     }, explode(",", $this->tap[$name]["id"]));
                     $this->api->addResource($block->getPosition(), $this->pos1[$name], $this->pos2[$name], $ids);
-                    $player->sendMessage("追加しました");
+                    $player->sendMessage(ReplenishResources::Prefix . "追加しました");
                     break;
                 case 'change':
                     if (!$this->api->existsResource($block->getPosition())) {
-                        $player->sendMessage("その場所にはまだ追加されていません");
+                        $player->sendMessage(ReplenishResources::Prefix . "その場所にはまだ追加されていません");
                         return;
                     }
                     $ids = array_map(function ($id2) {
@@ -308,33 +311,33 @@ class ReplenishResources extends PluginBase implements Listener {
                         return ["id" => $ids2[0], "damage" => $ids2[1] ?? 0, "per" => $ids2[2] ?? 100];
                     }, explode(",", $this->tap[$name]["id"]));
                     $this->api->updateResource($block->getPosition(), "id", $ids);
-                    $player->sendMessage("変更しました");
+                    $player->sendMessage(ReplenishResources::Prefix . "変更しました");
                     break;
                 case 'del':
                     if ($this->api->removeResource($block->getPosition())) {
-                        $player->sendMessage("削除しました");
+                        $player->sendMessage(ReplenishResources::Prefix . "削除しました");
                     } else {
-                        $player->sendMessage("その場所には登録されていません");
+                        $player->sendMessage(ReplenishResources::Prefix . "その場所には登録されていません");
                     }
                     break;
                 case 'auto_add':
                     if (!$this->api->existsResource($block->getPosition())) {
-                        $player->sendMessage("それは補充看板ではありません");
+                        $player->sendMessage(ReplenishResources::Prefix . "それは補充看板ではありません");
                         return;
                     }
                     if (!$this->api->addAutoReplenishResource($block->getPosition())) {
-                        $player->sendMessage("すでに追加されています");
+                        $player->sendMessage(ReplenishResources::Prefix . "すでに追加されています");
                         return;
                     }
-                    $player->sendMessage("追加しました");
-                    if (!$this->setting->get("enable-auto-replenish")) $player->sendMessage("§e自動補充がオフになっています。/reso settingでオンにしてください");
+                    $player->sendMessage(ReplenishResources::Prefix . "追加しました");
+                    if (!$this->setting->get("enable-auto-replenish")) $player->sendMessage(ReplenishResources::Prefix . "§e自動補充がオフになっています。/reso settingでオンにしてください");
                     break;
                 case 'auto_del':
                     if (!$this->api->removeAutoReplenishResource($block->getPosition())) {
-                        $player->sendMessage("まだ追加されていません");
+                        $player->sendMessage(ReplenishResources::Prefix . "まだ追加されていません");
                         return;
                     }
-                    $player->sendMessage("削除しました");
+                    $player->sendMessage(ReplenishResources::Prefix . "削除しました");
                     break;
             }
             unset($this->tap[$name]);
@@ -343,13 +346,13 @@ class ReplenishResources extends PluginBase implements Listener {
         if (!$this->api->existsResource($block->getPosition())) return;
         $place = $block->getPosition()->getX() . "," . $block->getPosition()->getY() . "," . $block->getPosition()->getZ() . "," . $block->getPosition()->getWorld()->getFolderName();
         if ($this->setting->get("sneak", false) and !$player->isSneaking()) {
-            $player->sendMessage("スニークしながらタップすると補充します");
+            $player->sendMessage(ReplenishResources::Prefix . "スニークしながらタップすると補充します");
             return;
         }
         if ($this->setting->get("enable-wait", false) and (float)$this->setting->get("wait") > 0) {
             $time = $this->checkTime($player->getName(), $place);
             if ($time !== true) {
-                $player->sendMessage($this->setting->get("wait") . "秒以内に使用しています\nあと" . round($time, 1) . "秒お待ちください");
+                $player->sendMessage(ReplenishResources::Prefix . $this->setting->get("wait") . "秒以内に使用しています。あと" . round($time, 1) . "秒お待ちください");
                 return;
             }
         }
@@ -360,12 +363,12 @@ class ReplenishResources extends PluginBase implements Listener {
             foreach ($players as $p) {
                 $pp = $p->getPosition();
                 if ($resource["level"] === $p->getWorld()->getFolderName() and $resource["startx"] <= floor($pp->x) and floor($pp->x) <= $resource["endx"] and $resource["starty"] <= floor($pp->y) and floor($pp->y) <= $resource["endy"] and $resource["startz"] <= floor($pp->z) and floor($pp->z) <= $resource["endz"]) {
-                    $p->sendTip("§e" . $name . "があなたのいる資源を補充しようとしています");
+                    $p->sendTip(ReplenishResources::Prefix . "§e" . $name . "があなたのいる資源を補充しようとしています");
                     $inside = true;
                 }
             }
             if ($inside) {
-                $player->sendMessage("資源内にプレイヤーがいるため補充できません");
+                $player->sendMessage(ReplenishResources::Prefix . "資源内にプレイヤーがいるため補充できません");
                 return;
             }
         }
@@ -373,11 +376,18 @@ class ReplenishResources extends PluginBase implements Listener {
         if ($this->setting->get("enable-count", false) and $allow >= 0) {
             $count = $this->countBlocks($resource);
             if ($count > $allow) {
-                $player->sendMessage("まだブロックが残っています (" . ($count - $allow) . ")");
+                $player->sendMessage(ReplenishResources::Prefix . "まだブロックが残っています (" . ($count - $allow) . ")");
                 return;
             }
         }
-        if ($this->setting->get("announcement")) $this->getServer()->broadcastMessage($name . "さんが資源({$this->countBlockAll($resource)})の補充を実行します");
+        $resourceBlock = $this->api->getResource($block->getPosition());
+        if ($resourceBlock === null) return;
+        $placeBlock = null;
+        foreach ($resourceBlock["id"] as $id) {
+            $placeBlock = BlockFactory::getInstance()->get((int)$id["id"], (int)$id["damage"]);
+        }
+        if (is_null($placeBlock)) return;
+        if ($this->setting->get("announcement")) $this->getServer()->broadcastMessage(ReplenishResources::Prefix . $name . "さんが{$block->getPosition()->getWorld()->getFolderName()}ワールドの{$placeBlock->getName()}資源({$this->countBlockAll($resource)}ブロック)の補充を実行しました");
         $this->api->replenish($block->getPosition());
     }
 
@@ -433,5 +443,9 @@ class ReplenishResources extends PluginBase implements Listener {
             }
         }
         return $count;
+    }
+
+    public static function getInstance(): self {
+        return self::$instance;
     }
 }
