@@ -53,6 +53,7 @@ class ReplenishResources extends PluginBase implements Listener {
         ]);
         $this->setting->save();
         $this->checkConfig();
+        self::$instance = $this;
         $this->api = new ReplenishResourcesAPI($this, $this->getConfig(), $this->setting);
         if ($this->setting->get("enable-auto-replenish")) {
             $time = (float)$this->setting->get("auto-replenish-time", 60) * 20;

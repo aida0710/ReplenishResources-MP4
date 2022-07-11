@@ -1,4 +1,5 @@
 <?php
+
 namespace aieuo\replenish;
 
 use pocketmine\block\BlockFactory;
@@ -40,16 +41,16 @@ class ReplenishResourcesAPI {
 
     public function existsResource(Position $pos): ?bool {
         if ($pos->world === null) return false;
-        return $this->resources->exists($pos->x.",".$pos->y.",".$pos->z.",".$pos->world->getFolderName());
+        return $this->resources->exists($pos->x . "," . $pos->y . "," . $pos->z . "," . $pos->world->getFolderName());
     }
 
     public function getResource(Position $pos): ?array {
         if ($pos->world === null) return null;
-        return $this->resources->get($pos->x.",".$pos->y.",".$pos->z.",".$pos->world->getFolderName(), null);
+        return $this->resources->get($pos->x . "," . $pos->y . "," . $pos->z . "," . $pos->world->getFolderName(), null);
     }
 
     public function addResource(Position $sign, Position $pos1, Position $pos2, array $ids): void {
-        $this->resources->set($sign->x.",".$sign->y.",".$sign->z.",".$sign->world->getFolderName(), [
+        $this->resources->set($sign->x . "," . $sign->y . "," . $sign->z . "," . $sign->world->getFolderName(), [
             "startx" => min($pos1->x, $pos2->x),
             "starty" => min($pos1->y, $pos2->y),
             "startz" => min($pos1->z, $pos2->z),
@@ -64,16 +65,16 @@ class ReplenishResourcesAPI {
 
     public function updateResource(Position $pos, string $key, $data): bool {
         $resource = $this->getResource($pos);
-        if($resource === null) return false;
+        if ($resource === null) return false;
         $resource[$key] = $data;
-        $this->resources->set($pos->x.",".$pos->y.",".$pos->z.",".$pos->world->getFolderName(), $resource);
+        $this->resources->set($pos->x . "," . $pos->y . "," . $pos->z . "," . $pos->world->getFolderName(), $resource);
         $this->resources->save();
         return true;
     }
 
     public function removeResource(Position $pos): bool {
-        if(!$this->existsResource($pos)) return false;
-        $this->resources->remove($pos->x.",".$pos->y.",".$pos->z.",".$pos->world->getFolderName());
+        if (!$this->existsResource($pos)) return false;
+        $this->resources->remove($pos->x . "," . $pos->y . "," . $pos->z . "," . $pos->world->getFolderName());
         $this->resources->save();
         return true;
     }
@@ -84,8 +85,8 @@ class ReplenishResourcesAPI {
 
     public function addAutoReplenishResource(Position $pos): bool {
         $resources = $this->getAutoReplenishResources();
-        $add = $pos->x.",".$pos->y.",".$pos->z.",".$pos->world->getFolderName();
-        if(in_array($add, $resources, true)) return false;
+        $add = $pos->x . "," . $pos->y . "," . $pos->z . "," . $pos->world->getFolderName();
+        if (in_array($add, $resources, true)) return false;
         $this->setting->set("auto-replenish-resources", array_merge($resources, [$add]));
         $this->setting->save();
         return true;
@@ -93,8 +94,8 @@ class ReplenishResourcesAPI {
 
     public function removeAutoReplenishResource(Position $pos): bool {
         $resources = $this->getAutoReplenishResources();
-        $remove = $pos->x.",".$pos->y.",".$pos->z.",".$pos->world->getFolderName();
-        if(!in_array($remove, $resources, true)) return false;
+        $remove = $pos->x . "," . $pos->y . "," . $pos->z . "," . $pos->world->getFolderName();
+        if (!in_array($remove, $resources, true)) return false;
         $resources = array_diff($resources, [$remove]);
         $resources = array_values($resources);
         $this->setting->set("auto-replenish-resources", $resources);
@@ -104,11 +105,10 @@ class ReplenishResourcesAPI {
 
     public function replenish(Position $pos): void {
         $resource = $this->getResource($pos);
-        if($resource === null) return;
-
+        if ($resource === null) return;
         $ids = [];
         $total = 0;
-        foreach($resource["id"] as $id) {
+        foreach ($resource["id"] as $id) {
             $min = $total + 1;
             $total += abs((int)$id["per"]);
             $ids[] = ["id" => $id["id"], "damage" => $id["damage"], "min" => $min, "max" => $total];
@@ -131,36 +131,38 @@ class ReplenishResourcesAPI {
         $endX = $pos2->x;
         $endY = $pos2->y;
         $endZ = $pos2->z;
-        for($n = 0; $n < $limit; $n++) {
+        for ($n = 0; $n < $limit; $n++) {
             $i++;
             $x = $startX + $i;
             $z = $startZ + $j;
             $y = $startY + $k;
-            if($x > $endX){
+            if ($x > $endX) {
                 $i = 0;
                 $j++;
                 $x = $startX + $i;
                 $z = $startZ + $j;
-                if($z > $endZ){
+                if ($z > $endZ) {
                     $j = 0;
                     $k++;
                     $z = $startZ + $j;
                     $y = $startY + $k;
-                    if($y > $endY) return true;
+                    if ($y > $endY) return true;
                 }
             }
             $rand = mt_rand(1, $total);
-            foreach($ids as $id) {
-                if($id["min"] <= $rand and $rand <= $id["max"]) break;
+            foreach ($ids as $id) {
+                if ($id["min"] <= $rand and $rand <= $id["max"]) break;
             }
-            if(!isset($id)) $id = $ids[array_rand($ids)];
+            if (!isset($id)) $id = $ids[array_rand($ids)];
             $pos1->world->setBlockAt($x, $y, $z, BlockFactory::getInstance()->get((int)$id["id"], (int)$id["damage"]));
         }
         $this->getOwner()->getScheduler()->scheduleDelayedTask(new class([$this, "setBlocks"], [$pos1, $pos2, $ids, $total, $limit, $period, $i, $j, $k]) extends Task {
+
             /** @var callable */
             private $callable;
-            /** @var array  */
+            /** @var array */
             private $data;
+
             public function __construct(callable $callable, array $data) {
                 $this->callable = $callable;
                 $this->data = $data;
